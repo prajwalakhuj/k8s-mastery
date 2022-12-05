@@ -1,0 +1,78 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: node
+            image: node:alpine
+            command:
+            - cat
+            tty: true
+          - name: docker
+            image: docker:latest
+            command:
+            - cat
+            tty: true
+            volumeMounts:
+             - mountPath: /var/run/docker.sock
+               name: docker-sock
+          volumes:
+          - name: docker-sock
+            hostPath:
+              path: /var/run/docker.sock    
+        '''
+    }
+  }
+  stages {
+    stage('Clone') {
+      steps {
+        container('node') {
+          git branch: 'main', changelog: false, poll: false, url: 'https://github.com/prajwalakhuj/k8s-mastery.git'
+        }
+      }
+    }  
+    stage('Build-node') {
+      steps {
+        container('node') {
+          dir("sa-frontend") {
+             sh 'npm install'
+             sh 'npm run build'
+          }
+        }
+      }
+    }
+    stage('Build-Docker-Image') {
+      steps {
+        container('docker') {
+          dir("sa-frontend") {
+           sh 'docker build -t prajwalakhuj/sentiment-analysis-frontend:latest .'
+          }
+        }
+      }
+    }
+    stage('Login-Into-Docker') {
+      steps {
+        container('docker') {
+          sh 'docker login -u prajwalakhuj -p <password>'
+      }
+    }
+    }
+     stage('Push-Images-Docker-to-DockerHub') {
+      steps {
+        container('docker') {
+          sh 'docker push prajwalakhuj/sentiment-analysis-frontend:latest'
+      }
+    }
+     }
+  }
+    post {
+      always {
+        container('docker') {
+          sh 'docker logout'
+      }
+      }
+    }
+}
