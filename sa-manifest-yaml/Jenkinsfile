@@ -6,8 +6,8 @@ pipeline {
         kind: Pod
         spec:
           containers:
-          - name: node
-            image: node:alpine
+          - name: maven
+            image: maven:alpine
             command:
             - cat
             tty: true
@@ -27,45 +27,43 @@ pipeline {
     }
   }
   stages {
-    stage('Clone') {
+    stage('Clone Repository') {
       steps {
-        container('node') {
-          git branch: 'main', changelog: false, poll: false, url: 'https://github.com/prajwalakhuj/k8s-mastery.git'
+        container('maven') {
+             git branch: 'master', changelog: false, poll: false, url: 'https://github.com/prajwalakhuj/k8s-mastery.git'
         }
       }
     }  
-    stage('Build-node') {
+    stage('Login Into Docker') {
       steps {
-        container('node') {
+        container('docker') {
+          sh 'docker login --username xxxxxx --password xxxxxxx'
+      }
+    }
+    }
+    stage('Build Docker Images') {
+      steps {
+        container('docker') {
           dir("sa-frontend") {
-             sh 'npm install'
-             sh 'npm run build'
+            sh 'docker build -t prajwalakhuj/sentiment-analysis-frontend:latest .'
+          }
+          dir("sa-webapp") {
+            sh 'docker build -t prajwalakhuj/sentiment-analysis-web-app:latest .'
+          }
+          dir("sa-logic") {
+            sh 'docker build -t prajwalakhuj/sentiment-analysis-logic:latest .'
           }
         }
       }
     }
-    stage('Build-Docker-Image') {
-      steps {
-        container('docker') {
-          dir("sa-frontend") {
-           sh 'docker build -t prajwalakhuj/sentiment-analysis-frontend:latest .'
-          }
-        }
-      }
-    }
-    stage('Login-Into-Docker') {
-      steps {
-        container('docker') {
-          sh 'docker login -u prajwalakhuj -p <password>'
-      }
-    }
-    }
-     stage('Push-Images-Docker-to-DockerHub') {
+     stage('Push Images Docker to DockerHub') {
       steps {
         container('docker') {
           sh 'docker push prajwalakhuj/sentiment-analysis-frontend:latest'
+          sh 'docker push prajwalakhuj/sentiment-analysis-webapp:latest'
+          sh 'docker push prajwalakhuj/sentiment-analysis-logic:latest'
       }
-    }
+     }
      }
   }
     post {
