@@ -60,7 +60,7 @@ pipeline {
       steps {
         container('docker') {
           sh 'docker push prajwalakhuj/sentiment-analysis-frontend:latest'
-          sh 'docker push prajwalakhuj/sentiment-analysis-webapp:latest'
+          sh 'docker push prajwalakhuj/sentiment-analysis-web-app:latest'
           sh 'docker push prajwalakhuj/sentiment-analysis-logic:latest'
       }
      }
